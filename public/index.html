@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portal Brahim</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Local Dashboard</p>
+          <h1>Portal Brahim</h1>
+          <p class="lede">
+            One place to open the Docker apps you already have running, without
+            remembering their ports.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="refreshButton" class="button">Refresh</button>
+          <label class="search">
+            <span>Search</span>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="service, project, image..."
+              autocomplete="off"
+            />
+          </label>
+        </div>
+      </header>
+
+      <section class="status-bar">
+        <div>
+          <span class="status-label">Apps</span>
+          <strong id="appCount">0</strong>
+        </div>
+        <div>
+          <span class="status-label">Updated</span>
+          <strong id="updatedAt">Waiting...</strong>
+        </div>
+      </section>
+
+      <main>
+        <section id="errorBox" class="message error hidden"></section>
+        <section id="emptyState" class="message hidden">
+          No published web ports found in running containers.
+        </section>
+        <section id="grid" class="card-grid"></section>
+      </main>
+    </div>
+
+    <template id="appCardTemplate">
+      <article class="card">
+        <div class="card-top">
+          <div>
+            <p class="card-project"></p>
+            <h2 class="card-title"></h2>
+          </div>
+          <span class="pill">running</span>
+        </div>
+
+        <dl class="meta">
+          <div>
+            <dt>Container</dt>
+            <dd class="card-container"></dd>
+          </div>
+          <div>
+            <dt>Image</dt>
+            <dd class="card-image"></dd>
+          </div>
+          <div>
+            <dt>Port</dt>
+            <dd class="card-port"></dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd class="card-status"></dd>
+          </div>
+        </dl>
+
+        <div class="card-actions">
+          <a class="button button-primary card-link" target="_blank" rel="noreferrer">
+            Open App
+          </a>
+          <button class="button button-secondary card-copy" type="button">
+            Copy URL
+          </button>
+        </div>
+      </article>
+    </template>
+
+    <script>
+      const state = {
+        apps: [],
+        query: "",
+      };
+
+      const elements = {
+        appCount: document.getElementById("appCount"),
+        updatedAt: document.getElementById("updatedAt"),
+        errorBox: document.getElementById("errorBox"),
+        emptyState: document.getElementById("emptyState"),
+        grid: document.getElementById("grid"),
+        refreshButton: document.getElementById("refreshButton"),
+        searchInput: document.getElementById("searchInput"),
+        template: document.getElementById("appCardTemplate"),
+      };
+
+      function formatTime(value) {
+        return new Date(value).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      function render() {
+        const query = state.query.trim().toLowerCase();
+        const apps = state.apps.filter((app) => {
+          if (!query) {
+            return true;
+          }
+
+          return [app.name, app.project, app.service, app.image, app.containerName]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(query));
+        });
+
+        elements.grid.innerHTML = "";
+        elements.appCount.textContent = String(apps.length);
+        elements.emptyState.classList.toggle("hidden", apps.length !== 0);
+
+        for (const app of apps) {
+          const fragment = elements.template.content.cloneNode(true);
+          fragment.querySelector(".card-project").textContent =
+            app.project || "Standalone container";
+          fragment.querySelector(".card-title").textContent = app.name;
+          fragment.querySelector(".card-container").textContent = app.containerName;
+          fragment.querySelector(".card-image").textContent = app.image;
+          fragment.querySelector(".card-port").textContent =
+            app.port + " -> " + app.internalPort;
+          fragment.querySelector(".card-status").textContent = app.status;
+
+          const link = fragment.querySelector(".card-link");
+          link.href = app.url;
+          link.textContent = "Open " + app.port;
+
+          fragment
+            .querySelector(".card-copy")
+            .addEventListener("click", async () => {
+              await navigator.clipboard.writeText(app.url);
+            });
+
+          elements.grid.appendChild(fragment);
+        }
+      }
+
+      async function loadApps() {
+        elements.errorBox.classList.add("hidden");
+
+        try {
+          const response = await fetch("/api/apps", { cache: "no-store" });
+          const payload = await response.json();
+
+          if (!response.ok) {
+            throw new Error(payload.details || payload.error || "Unknown error");
+          }
+
+          state.apps = payload.apps;
+          elements.updatedAt.textContent = formatTime(payload.generatedAt);
+          render();
+        } catch (error) {
+          state.apps = [];
+          render();
+          elements.errorBox.textContent = error.message;
+          elements.errorBox.classList.remove("hidden");
+          elements.updatedAt.textContent = "Unavailable";
+        }
+      }
+
+      elements.refreshButton.addEventListener("click", loadApps);
+      elements.searchInput.addEventListener("input", (event) => {
+        state.query = event.target.value;
+        render();
+      });
+
+      loadApps();
+      setInterval(loadApps, 15000);
+    </script>
+  </body>
+</html>

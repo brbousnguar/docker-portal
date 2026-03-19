@@ -1,0 +1,12 @@
+services:
+  portal-brahim:
+    build: .
+    container_name: portal-brahim
+    ports:
+      - "3200:3200"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      PORT: 3200
+      APP_NAME: portal-brahim
+    restart: unless-stopped

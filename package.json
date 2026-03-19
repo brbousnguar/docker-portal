@@ -1,0 +1,12 @@
+{
+  "name": "portal-brahim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal for locally running Docker web apps",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
