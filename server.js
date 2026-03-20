@@ -95,11 +95,13 @@ function toAppRecord(container) {
   const projectName = labels["com.docker.compose.project"] || null;
   const serviceName = labels["com.docker.compose.service"] || null;
 
-  if (
+  const isExcluded = 
     primaryName.includes(APP_NAME) ||
     container.Image?.includes(APP_NAME) ||
-    serviceName === APP_NAME
-  ) {
+    serviceName === APP_NAME ||
+    /backend|api|db|database|postgres|mysql|redis/i.test(serviceName || primaryName);
+
+  if (isExcluded) {
     return [];
   }
 
@@ -134,7 +136,12 @@ function toAppRecord(container) {
 
   return ports.map((portBinding, index) => ({
     id: `${container.Id}:${portBinding.publicPort}:${index}`,
-    name: titleize(serviceName || primaryName),
+    rawContainerId: container.Id,
+    name: titleize(
+      projectName && /^(web|frontend|backend|api|app|client|server|db|database)$/i.test(serviceName)
+        ? `${projectName} ${serviceName}`
+        : serviceName || primaryName
+    ),
     containerName: primaryName,
     image: container.Image,
     project: projectName,
@@ -150,8 +157,43 @@ function toAppRecord(container) {
 
 async function listApps() {
   const containers = await dockerRequest("GET", "/containers/json");
-  return containers
-    .flatMap(toAppRecord)
+  const filteredApps = containers.flatMap(toAppRecord);
+
+  const uniqueContainerIds = [...new Set(filteredApps.map((a) => a.rawContainerId))];
+  const statsPromises = uniqueContainerIds.map(async (cid) => {
+    try {
+      const stats = await dockerRequest("GET", `/containers/${cid}/stats?stream=false`);
+      const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
+      const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+      let cpuPercent = 0.0;
+      if (systemDelta > 0.0 && cpuDelta > 0.0) {
+        cpuPercent = (cpuDelta / systemDelta) * (stats.cpu_stats.online_cpus || 1) * 100.0;
+      }
+      
+      const memUsage = stats.memory_stats.usage || 0;
+      const formatBytes = (bytes) => {
+        if (bytes === 0) return "0 MB";
+        return (bytes / 1024 / 1024).toFixed(1) + " MB";
+      };
+
+      return { cid, cpu: `${cpuPercent.toFixed(1)}%`, ram: formatBytes(memUsage) };
+    } catch (e) {
+      return { cid, cpu: "N/A", ram: "N/A" };
+    }
+  });
+
+  const statsResults = await Promise.all(statsPromises);
+  const statsMap = Object.fromEntries(statsResults.map((s) => [s.cid, s]));
+
+  return filteredApps
+    .map((app) => {
+      const { rawContainerId, ...rest } = app;
+      return {
+        ...rest,
+        cpu: statsMap[rawContainerId]?.cpu || "N/A",
+        ram: statsMap[rawContainerId]?.ram || "N/A",
+      };
+    })
     .sort((left, right) => {
       if (left.project && right.project && left.project !== right.project) {
         return left.project.localeCompare(right.project);

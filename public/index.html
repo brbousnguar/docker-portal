@@ -103,11 +103,18 @@
                 <span class="detail-value app-port font-mono"></span>
               </div>
             </div>
+            <div class="detail-row">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="detail-icon"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/></svg>
+              <div class="detail-content">
+                <span class="detail-label">Resources</span>
+                <span class="detail-value app-resources font-mono"></span>
+              </div>
+            </div>
           </div>
 
           <footer class="app-actions">
             <a class="btn btn-primary app-link" target="_blank" rel="noreferrer">
-              <span class="link-text">Open Portal</span>
+              <span class="link-text">Open the webapp</span>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>
             <button class="btn btn-secondary app-copy" type="button" title="Copy URL">
@@ -174,6 +181,7 @@
           fragment.querySelector(".app-title").textContent = app.name;
           fragment.querySelector(".app-image").textContent = app.image.split(':')[0]; // Truncate tag if too long? Just base image looks cleaner
           fragment.querySelector(".app-port").textContent = app.port + " → " + app.internalPort;
+          fragment.querySelector(".app-resources").textContent = app.cpu + " CPU • " + app.ram;
 
           // Status badge handling (mocked up logic: assuming if it's there, it's running)
           const badge = fragment.querySelector(".status-badge");
