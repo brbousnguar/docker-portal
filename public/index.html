@@ -150,6 +150,12 @@
         });
       }
 
+      function buildAppUrl(app) {
+        const protocol = window.location.protocol || "http:";
+        const hostname = window.location.hostname || "localhost";
+        return `${protocol}//${hostname}:${app.port}`;
+      }
+
       function render() {
         const query = state.query.trim().toLowerCase();
         const apps = state.apps.filter((app) => {
@@ -191,12 +197,13 @@
               badge.querySelector(".status-text").textContent = "Stopped";
           }
 
+          const appUrl = buildAppUrl(app);
           const link = fragment.querySelector(".app-link");
-          link.href = app.url;
+          link.href = appUrl;
           
           const copyBtn = fragment.querySelector(".app-copy");
           copyBtn.addEventListener("click", async () => {
-             await navigator.clipboard.writeText(app.url);
+             await navigator.clipboard.writeText(appUrl);
              // Visual feedback
              copyBtn.classList.add("success");
              setTimeout(() => copyBtn.classList.remove("success"), 1000);

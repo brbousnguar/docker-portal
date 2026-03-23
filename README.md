@@ -6,7 +6,7 @@
 
 - reads the Docker API from the mounted socket
 - lists running containers with likely web-facing ports
-- links each app to `http://localhost:<published-port>`
+- links each app using the same hostname or IP you used to open the portal
 - loads the latest apps when the page is opened or refreshed
 
 ## Run it
