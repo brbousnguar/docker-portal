@@ -539,7 +539,7 @@ body {
   }
 
   .sidebar-bottom {
-    display: none; /* Hide refresh button on mobile, mostly auto-refreshes anyway or move it to top nav */
+    display: none; /* Hide refresh button on mobile or move it to the top nav if needed */
   }
 
   .main-content {
